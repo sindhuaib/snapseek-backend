@@ -1,0 +1,45 @@
+{%- comment -%}
+  Image Search Widget — embeds the Render-hosted React widget.
+  Drop this file into your Shopify theme's `sections/` folder, then add it
+  to any page (or template) from the theme editor.
+{%- endcomment -%}
+
+<link rel="stylesheet" href="{{ section.settings.api_base }}/image-search-widget.css">
+
+<div
+  data-image-search-widget
+  data-api-base="{{ section.settings.api_base }}/api"
+  style="margin: {{ section.settings.margin_top }}px 0 {{ section.settings.margin_bottom }}px;">
+</div>
+
+<script src="{{ section.settings.api_base }}/image-search-widget.js" defer></script>
+
+{% schema %}
+{
+  "name": "Image Search",
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_base",
+      "label": "Backend URL (Render)",
+      "info": "Base URL of your deployed backend, e.g. https://your-app.onrender.com (no trailing slash).",
+      "default": "https://your-app.onrender.com"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Top margin (px)",
+      "min": 0, "max": 120, "step": 4, "default": 32
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Bottom margin (px)",
+      "min": 0, "max": 120, "step": 4, "default": 32
+    }
+  ],
+  "presets": [
+    { "name": "Image Search" }
+  ]
+}
+{% endschema %}
