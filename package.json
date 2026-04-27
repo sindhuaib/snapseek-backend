@@ -1,0 +1,14 @@
+{
+  "name": "snapseek",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Snapseek image-search app — Express backend + React widget for Shopify embed",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "postinstall": "npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start"
+  }
+}
