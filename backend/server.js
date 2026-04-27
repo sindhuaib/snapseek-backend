@@ -4,7 +4,6 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { connectDB } from './db.js';
-import { warmup } from './lib/embeddings.js';
 import searchRouter from './routes/search.js';
 import productsRouter from './routes/products.js';
 
@@ -33,20 +32,9 @@ app.use(
 );
 app.use(express.json());
 
-let modelReady = false;
-
 app.get('/api/health', (_req, res) =>
-  res.json({ ok: true, modelReady })
+  res.json({ ok: true, hfConfigured: Boolean(process.env.HUGGINGFACE_API_TOKEN) })
 );
-
-app.use('/api/search', (req, res, next) => {
-  if (!modelReady) {
-    return res
-      .status(503)
-      .json({ error: 'Model is still loading. Please retry in a few seconds.' });
-  }
-  next();
-});
 
 app.use('/api/products', productsRouter);
 app.use('/api/search', searchRouter);
@@ -62,12 +50,13 @@ async function start() {
 
   try {
     await connectDB(MONGODB_URI);
-    console.log('Mongo connected. Loading CLIP model (first run downloads ~150MB)...');
-    await warmup();
-    modelReady = true;
-    console.log('CLIP model ready');
+    console.log('Mongo connected.');
   } catch (err) {
-    console.error('Startup task failed:', err);
+    console.error('Mongo connection failed:', err);
+  }
+
+  if (!process.env.HUGGINGFACE_API_TOKEN) {
+    console.warn('HUGGINGFACE_API_TOKEN not set — /api/search will fail');
   }
 }
 
