@@ -1,6 +1,6 @@
 const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_MODEL = process.env.HF_EMBEDDING_MODEL || 'facebook/dinov2-base';
-const HF_URL = `https://api-inference.huggingface.co/pipeline/image-feature-extraction/${HF_MODEL}`;
+const HF_MODEL = process.env.HF_EMBEDDING_MODEL || 'google/vit-base-patch16-224';
+const HF_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}/pipeline/image-feature-extraction`;
 
 const MAX_RETRIES = 4;
 const COLD_START_BACKOFF_MS = 5000;
