@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ImageUpload from './components/ImageUpload.jsx';
-import ProductGrid from './components/ProductGrid.jsx';
+
 import { createApi } from './api.js';
 
 export default function App({ apiBase }) {
@@ -27,10 +27,7 @@ export default function App({ apiBase }) {
 
       {error && <p className="isw-error">{error}</p>}
 
-      <section>
-        <h2>All Products</h2>
-        <ProductGrid products={products} />
-      </section>
+     
     </div>
   );
 }
