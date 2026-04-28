@@ -3,10 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Image Search Storefront</title>
+    <title>Snapseek — local dev</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #fff;
+      }
+      .dev-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .dev-banner {
+        font-size: 12px;
+        color: #64748b;
+        padding: 6px 10px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        display: inline-block;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div class="dev-shell">
+      <div class="dev-banner">
+        Local dev — hitting Render API. Edit any .jsx/.css and the page hot-reloads.
+      </div>
+      <div
+        data-image-search-widget
+        data-api-base="/api"
+      ></div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
