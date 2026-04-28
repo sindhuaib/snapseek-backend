@@ -138,8 +138,7 @@ export default function ImageUpload({ api, presetImages = [] }) {
                     <path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
                   </svg>
                   <p className="isw-dropzone-text">
-                    Drag and drop your image here, click "Upload Image,"<br />
-                    or paste the image here
+                    Upload Image                 
                   </p>
                   <button
                     type="button"
@@ -191,6 +190,14 @@ export default function ImageUpload({ api, presetImages = [] }) {
                         ))}
                       </div>
                     )}
+
+                    <button
+                      type="button"
+                      className="isw-drop-cta"
+                      onClick={openPicker}
+                    >
+                      Drop your image here
+                    </button>
                   </div>
                 </section>
 
