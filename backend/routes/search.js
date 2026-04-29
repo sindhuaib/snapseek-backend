@@ -16,7 +16,7 @@ const upload = multer({
 });
 
 const TOP_N = Number(process.env.TOP_N || 5);
-const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.7);
+const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.2);
 
 router.post('/', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
@@ -25,7 +25,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     const queryEmbedding = await embedImageFromBuffer(req.file.buffer);
     const products = await Product.find({}, 'title link imageUrl embedding').lean();
 
-    const scored = products
+    const ranked = products
       .map((p) => ({
         _id: p._id,
         title: p.title,
@@ -33,11 +33,13 @@ router.post('/', upload.single('image'), async (req, res) => {
         imageUrl: p.imageUrl,
         score: cosineSimilarity(queryEmbedding, p.embedding),
       }))
-      .filter((p) => p.score >= THRESHOLD)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, TOP_N);
+      .sort((a, b) => b.score - a.score);
 
-    res.json({ results: scored });
+    const topScores = ranked.slice(0, TOP_N).map((p) => p.score.toFixed(3));
+    console.log(`Search top ${TOP_N} scores:`, topScores.join(', '));
+
+    const filtered = ranked.filter((p) => p.score >= THRESHOLD).slice(0, TOP_N);
+    res.json({ results: filtered });
   } catch (err) {
     console.error('Search failed:', err);
     res.status(500).json({ error: 'Search failed', detail: err.message });
