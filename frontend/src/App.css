@@ -428,10 +428,7 @@
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
-.image-search-widget .isw-upload-btn:hover {
-  background: var(--isw-text);
-  color: #ffffff;
-}
+
 
 .image-search-widget .isw-presets-section {
   display: flex;
