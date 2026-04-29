@@ -15,19 +15,14 @@ export default function App({ apiBase }) {
       .catch((e) => setError(e.message));
   }, [api]);
 
-  return (
-    <div className="isw-app">
-      <header className="isw-header">
-        <h1>Visual Search</h1>
-        <ImageUpload
-          api={api}
-          presetImages={products.slice(0, 6).map((p) => p.imageUrl)}
-        />
-      </header>
+return (
+  <>
+    <ImageUpload
+      api={api}
+      presetImages={products.slice(0, 6).map((p) => p.imageUrl)}
+    />
+    {error && <p className="isw-error">{error}</p>}
+  </>
+);
 
-      {error && <p className="isw-error">{error}</p>}
-
-     
-    </div>
-  );
 }

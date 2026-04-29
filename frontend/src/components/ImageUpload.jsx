@@ -86,12 +86,26 @@ export default function ImageUpload({ api, presetImages = [] }) {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="isw-primary"
-      >
-        Search by Image
-      </button>
+   <button
+  onClick={() => setIsOpen(true)}
+  className="isw-trigger"
+  aria-label="Search by image"
+>
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M14.5 4l-1.5-2h-6L5.5 4H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <circle cx="10" cy="13" r="3.5" />
+    <path d="M19 2v6M16 5h6" />
+  </svg>
+</button>
 
       <input
         ref={inputRef}
@@ -137,9 +151,7 @@ export default function ImageUpload({ api, presetImages = [] }) {
                     <path d="M7 9l5-5 5 5" />
                     <path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
                   </svg>
-                  <p className="isw-dropzone-text">
-                    Upload Image                 
-                  </p>
+                
                   <button
                     type="button"
                     className="isw-upload-btn"
