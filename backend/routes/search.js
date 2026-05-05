@@ -16,7 +16,8 @@ const upload = multer({
 });
 
 const TOP_N = Number(process.env.TOP_N || 5);
-const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.2);
+const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.4);
+const MIN_TOP_SCORE = Number(process.env.MIN_TOP_SCORE || 0.45);
 
 router.post('/', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
@@ -37,6 +38,12 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     const topScores = ranked.slice(0, TOP_N).map((p) => p.score.toFixed(3));
     console.log(`Search top ${TOP_N} scores:`, topScores.join(', '));
+
+    const topScore = ranked[0]?.score ?? 0;
+    if (topScore < MIN_TOP_SCORE) {
+      console.log(`Top score ${topScore.toFixed(3)} < ${MIN_TOP_SCORE}, returning no results`);
+      return res.json({ results: [] });
+    }
 
     const filtered = ranked.filter((p) => p.score >= THRESHOLD).slice(0, TOP_N);
     res.json({ results: filtered });
