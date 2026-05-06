@@ -1,11 +1,12 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
 import { connectDB } from './db.js';
 import Product from './models/Product.js';
 import { embedImageFromUrl, warmup } from './lib/embeddings.js';
 import { getAllProducts } from './lib/shopify.js';
 
-async function syncProducts() {
+export async function syncProducts({ ensureConnection = false } = {}) {
   const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
   const accessToken = process.env.SHOPIFY_ADMIN_API_TOKEN;
 
@@ -15,12 +16,12 @@ async function syncProducts() {
     );
   }
 
-  await connectDB(
-    process.env.MONGODB_URI ||
-      'mongodb://localhost:27017/image-search'
-  );
+  if (ensureConnection && mongoose.connection.readyState === 0) {
+    await connectDB(
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/image-search'
+    );
+  }
 
-  console.log('Loading CLIP model...');
   await warmup();
 
   console.log('Fetching products from Shopify...');
@@ -50,10 +51,17 @@ async function syncProducts() {
   }
 
   console.log(`\nSeeded ${success}/${shopifyProducts.length} products`);
-  await mongoose.disconnect();
+  return { success, total: shopifyProducts.length };
 }
 
-syncProducts().catch((err) => {
-  console.error('Sync failed:', err.message);
-  process.exit(1);
-});
+const __filename = fileURLToPath(import.meta.url);
+const isCLI = process.argv[1] && process.argv[1].endsWith('syncProducts.js');
+
+if (isCLI) {
+  syncProducts({ ensureConnection: true })
+    .then(() => mongoose.disconnect())
+    .catch((err) => {
+      console.error('Sync failed:', err.message);
+      process.exit(1);
+    });
+}

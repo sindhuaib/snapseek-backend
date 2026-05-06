@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import { connectDB } from './db.js';
 import searchRouter from './routes/search.js';
 import productsRouter from './routes/products.js';
+import adminRouter from './routes/admin.js';
 
 const PORT = Number(process.env.PORT || 4000);
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/image-search';
@@ -38,6 +39,15 @@ app.get('/api/health', (_req, res) =>
 
 app.use('/api/products', productsRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/admin', adminRouter);
+
+app.get('/admin', (_req, res) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors https://*.myshopify.com https://admin.shopify.com"
+  );
+  res.sendFile(join(__dirname, 'views/admin.html'));
+});
 
 app.use(express.static(distPath));
 

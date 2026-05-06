@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snapseek — Admin</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    background: #f6f6f7;
+    color: #202223;
+  }
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+  }
+  .subtitle {
+    margin: 0 0 24px;
+    color: #6d7175;
+    font-size: 14px;
+  }
+  .card {
+    background: #ffffff;
+    border: 1px solid #e1e3e5;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+  }
+  .card p {
+    color: #6d7175;
+    margin: 0 0 16px;
+    font-size: 14px;
+  }
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 14px;
+  }
+  .stat:last-child { border-bottom: none; }
+  .stat-label { color: #6d7175; }
+  .stat-value { font-weight: 600; }
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pill.green { background: #d4f4dd; color: #0f6938; }
+  .pill.red { background: #fde2e1; color: #b3261e; }
+  .pill.yellow { background: #fff3cd; color: #8a6d0c; }
+  button.primary {
+    background: #008060;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primary:hover:not(:disabled) { background: #006e52; }
+  button.primary:disabled { opacity: 0.5; cursor: wait; }
+  .toast {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .toast.info { background: #e3f2fd; color: #1565c0; }
+  .toast.success { background: #d4f4dd; color: #0f6938; }
+  .toast.error { background: #fde2e1; color: #b3261e; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Snapseek Admin</h1>
+    <p class="subtitle">Image search index for your Shopify store.</p>
+
+    <div class="card">
+      <h2>Status</h2>
+      <div id="status-grid">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h2>Re-sync products</h2>
+      <p>Pull the latest products from Shopify and rebuild the image-search index. Run this whenever you add, remove, or change product images.</p>
+      <button class="primary" id="sync-btn">Re-sync now</button>
+      <div id="sync-toast"></div>
+    </div>
+  </div>
+
+  <script>
+    const $statusGrid = document.getElementById('status-grid');
+    const $syncBtn = document.getElementById('sync-btn');
+    const $syncToast = document.getElementById('sync-toast');
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/admin/status');
+        const data = await res.json();
+        renderStatus(data);
+      } catch (err) {
+        $statusGrid.innerHTML = '<div class="toast error">Failed to load status: ' + err.message + '</div>';
+      }
+    }
+
+    function renderStatus(data) {
+      const lastSync = data.lastSyncFinished
+        ? new Date(data.lastSyncFinished).toLocaleString()
+        : 'Never (run sync to populate)';
+      $statusGrid.innerHTML =
+        '<div class="stat"><span class="stat-label">Backend</span>' +
+          '<span class="pill ' + (data.healthy ? 'green' : 'red') + '">' +
+          (data.healthy ? 'Healthy' : 'Down') + '</span></div>' +
+        '<div class="stat"><span class="stat-label">Products indexed</span>' +
+          '<span class="stat-value">' + data.productCount + '</span></div>' +
+        '<div class="stat"><span class="stat-label">Last sync</span>' +
+          '<span class="stat-value">' + lastSync + '</span></div>' +
+        '<div class="stat"><span class="stat-label">Sync status</span>' +
+          '<span class="pill ' + (data.syncRunning ? 'yellow' : 'green') + '">' +
+          (data.syncRunning ? 'In progress' : 'Idle') + '</span></div>';
+      $syncBtn.disabled = data.syncRunning;
+    }
+
+    $syncBtn.addEventListener('click', async () => {
+      $syncBtn.disabled = true;
+      $syncToast.innerHTML = '<div class="toast info">Starting sync...</div>';
+      try {
+        const res = await fetch('/api/admin/sync', { method: 'POST' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Sync failed to start');
+        }
+        $syncToast.innerHTML = '<div class="toast info">Sync started in background. Status will update automatically.</div>';
+        const interval = setInterval(async () => {
+          await loadStatus();
+          const res = await fetch('/api/admin/status');
+          const data = await res.json();
+          if (!data.syncRunning) {
+            clearInterval(interval);
+            const result = data.lastSyncResult;
+            if (result && result.error) {
+              $syncToast.innerHTML = '<div class="toast error">Sync failed: ' + result.error + '</div>';
+            } else if (result) {
+              $syncToast.innerHTML = '<div class="toast success">Sync complete: ' + result.success + '/' + result.total + ' products indexed.</div>';
+            }
+          }
+        }, 5000);
+      } catch (err) {
+        $syncToast.innerHTML = '<div class="toast error">' + err.message + '</div>';
+        $syncBtn.disabled = false;
+      }
+    });
+
+    loadStatus();
+    setInterval(loadStatus, 30000);
+  </script>
+</body>
+</html>
