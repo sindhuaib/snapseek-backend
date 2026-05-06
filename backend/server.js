@@ -20,13 +20,20 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.length === 0) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin === 'https://admin.shopify.com') return true;
+  if (/^https:\/\/[a-z0-9-]+\.myshopify\.com$/.test(origin)) return true;
+  return false;
+}
+
 const app = express();
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.length === 0) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (isAllowedOrigin(origin)) return cb(null, true);
       return cb(new Error(`Origin ${origin} not allowed by CORS`));
     },
   })
