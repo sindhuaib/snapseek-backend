@@ -105,13 +105,16 @@
   </div>
 
   <script>
+    const BASE_URL = 'https://snapseek-backend.onrender.com';
+    
+
     const $statusGrid = document.getElementById('status-grid');
     const $syncBtn = document.getElementById('sync-btn');
     const $syncToast = document.getElementById('sync-toast');
 
     async function loadStatus() {
       try {
-        const res = await fetch('/api/admin/status');
+        const res = await fetch(BASE_URL + '/api/admin/status');
         const data = await res.json();
         renderStatus(data);
       } catch (err) {
@@ -141,15 +144,15 @@
       $syncBtn.disabled = true;
       $syncToast.innerHTML = '<div class="toast info">Starting sync...</div>';
       try {
-        const res = await fetch('/api/admin/sync', { method: 'POST' });
+        const res = await fetch(BASE_URL + '/api/admin/sync', { method: 'POST' });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || 'Sync failed to start');
+          throw new Error(err.error || ('Sync failed (HTTP ' + res.status + ')'));
         }
         $syncToast.innerHTML = '<div class="toast info">Sync started in background. Status will update automatically.</div>';
         const interval = setInterval(async () => {
           await loadStatus();
-          const res = await fetch('/api/admin/status');
+          const res = await fetch(BASE_URL + '/api/admin/status');
           const data = await res.json();
           if (!data.syncRunning) {
             clearInterval(interval);
