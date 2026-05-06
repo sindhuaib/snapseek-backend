@@ -26,6 +26,7 @@ function isAllowedOrigin(origin) {
   if (allowedOrigins.includes(origin)) return true;
   if (origin === 'https://admin.shopify.com') return true;
   if (/^https:\/\/[a-z0-9-]+\.myshopify\.com$/.test(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.onrender\.com$/.test(origin)) return true;
   return false;
 }
 
