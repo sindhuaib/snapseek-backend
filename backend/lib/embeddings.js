@@ -1,65 +1,68 @@
-const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_MODEL = process.env.HF_EMBEDDING_MODEL || 'google/vit-base-patch16-224';
-const HF_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}/pipeline/image-feature-extraction`;
+const CF_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 
-const MAX_RETRIES = 4;
-const COLD_START_BACKOFF_MS = 5000;
+const VISION_MODEL = process.env.CF_VISION_MODEL || '@cf/llava-hf/llava-1.5-7b-hf';
+const TEXT_EMBED_MODEL = process.env.CF_EMBED_MODEL || '@cf/baai/bge-base-en-v1.5';
 
-async function postImageBytes(buffer) {
-  if (!HF_TOKEN) {
-    throw new Error('HUGGINGFACE_API_TOKEN env var is not set');
+const DESCRIBE_PROMPT =
+  'Describe this image in 2-3 sentences. Focus on: what type of object/item it is, what category it belongs to (clothing, electronics, accessory, food, etc.), key materials, dominant colors, patterns, and any notable visual features. Use simple descriptive words.';
+
+function ensureConfigured() {
+  if (!CF_TOKEN || !CF_ACCOUNT_ID) {
+    throw new Error(
+      'CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID env vars must be set'
+    );
   }
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(HF_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/octet-stream',
-      },
-      body: buffer,
-    });
-
-    if (res.ok) {
-      return res.json();
-    }
-
-    const text = await res.text();
-    if (res.status === 503 && attempt < MAX_RETRIES) {
-      let wait = COLD_START_BACKOFF_MS;
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed.estimated_time) wait = Math.ceil(parsed.estimated_time * 1000);
-      } catch {}
-      console.log(`HF model warming up, retry ${attempt}/${MAX_RETRIES} in ${wait}ms`);
-      await new Promise((r) => setTimeout(r, wait));
-      continue;
-    }
-
-    throw new Error(`HF inference failed (${res.status}): ${text.slice(0, 300)}`);
-  }
-  throw new Error('HF inference: max retries exceeded');
 }
 
-function poolFeatures(features) {
-  if (!Array.isArray(features)) {
-    throw new Error('Unexpected HF response shape');
+async function cfRun(model, body) {
+  ensureConfigured();
+  const url = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${model}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${CF_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Cloudflare ${model} failed (${res.status}): ${text.slice(0, 300)}`
+    );
   }
 
-  let arr = features;
-  while (Array.isArray(arr[0]) && Array.isArray(arr[0][0])) {
-    arr = arr[0];
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(
+      `Cloudflare ${model} returned error: ${JSON.stringify(data.errors).slice(0, 300)}`
+    );
   }
+  return data.result;
+}
 
-  if (Array.isArray(arr[0])) {
-    const dim = arr[0].length;
-    const sum = new Array(dim).fill(0);
-    for (const row of arr) {
-      for (let i = 0; i < dim; i++) sum[i] += row[i];
-    }
-    return sum.map((v) => v / arr.length);
+async function describeImage(buffer) {
+  const bytes = Array.from(new Uint8Array(buffer));
+  const result = await cfRun(VISION_MODEL, {
+    image: bytes,
+    prompt: DESCRIBE_PROMPT,
+    max_tokens: 256,
+  });
+  const description = (result.description || result.response || '').trim();
+  if (!description) {
+    throw new Error('Vision model returned empty description');
   }
+  return description;
+}
 
-  return arr;
+async function embedText(text) {
+  const result = await cfRun(TEXT_EMBED_MODEL, { text: [text] });
+  if (!Array.isArray(result.data) || !Array.isArray(result.data[0])) {
+    throw new Error(`Unexpected embedding response: ${JSON.stringify(result).slice(0, 200)}`);
+  }
+  return result.data[0];
 }
 
 function l2Normalize(vec) {
@@ -70,14 +73,18 @@ function l2Normalize(vec) {
 }
 
 export async function warmup() {
-  if (!HF_TOKEN) {
-    console.warn('HUGGINGFACE_API_TOKEN not set — embedding calls will fail');
+  if (!CF_TOKEN || !CF_ACCOUNT_ID) {
+    console.warn(
+      'CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID not set — embedding calls will fail'
+    );
   }
 }
 
 export async function embedImageFromBuffer(buffer) {
-  const features = await postImageBytes(buffer);
-  return l2Normalize(poolFeatures(features));
+  const description = await describeImage(buffer);
+  console.log(`  Description: ${description.slice(0, 120)}${description.length > 120 ? '...' : ''}`);
+  const embedding = await embedText(description);
+  return l2Normalize(embedding);
 }
 
 export async function embedImageFromUrl(url) {
