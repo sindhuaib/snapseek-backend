@@ -71,10 +71,10 @@ export async function getAllProducts(storeDomain, accessToken) {
           edge.node.images.edges[0]?.node.url ||
           'https://via.placeholder.com/400',
           price: edge.node.priceRange?.minVariantPrice?.amount
-  ? new Intl.NumberFormat('en-US', {
+  ? new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: edge.node.priceRange.minVariantPrice.currencyCode,
-    }).format(parseFloat(edge.node.priceRange.minVariantPrice.amount))
+    }).format(parseFloat(edge.node.priceRange.minVariantPrice.amount) / 100)
   : '',
       }))
     );
