@@ -33,6 +33,7 @@ export async function syncProducts({ ensureConnection = false } = {}) {
 
   let success = 0;
   for (const p of shopifyProducts) {
+     console.log('SYNC PRODUCT:', p);
     try {
       console.log(`Embedding: ${p.title}`);
       const embedding = await embedImageFromUrl(p.imageUrl);
@@ -42,6 +43,7 @@ export async function syncProducts({ ensureConnection = false } = {}) {
         handle: p.handle,
         link: `https://${storeDomain}/products/${p.handle}`,
         imageUrl: p.imageUrl,
+        price: p.price, 
         embedding,
       });
       success++;

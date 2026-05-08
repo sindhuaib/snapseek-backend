@@ -24,7 +24,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   try {
     const queryEmbedding = await embedImageFromBuffer(req.file.buffer);
-    const products = await Product.find({}, 'title link imageUrl embedding').lean();
+    const products = await Product.find({}, 'title link imageUrl embedding price').lean();
 
     const ranked = products
       .map((p) => ({
@@ -32,6 +32,7 @@ router.post('/', upload.single('image'), async (req, res) => {
         title: p.title,
         link: p.link,
         imageUrl: p.imageUrl,
+         price: p.price,    
         score: cosineSimilarity(queryEmbedding, p.embedding),
       }))
       .sort((a, b) => b.score - a.score);

@@ -13,6 +13,12 @@ export async function getProducts(storeDomain, accessToken, limit = 250, cursor 
             id
             title
             handle
+             priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
             images(first: 1) {
               edges {
                 node {
@@ -64,6 +70,12 @@ export async function getAllProducts(storeDomain, accessToken) {
         imageUrl:
           edge.node.images.edges[0]?.node.url ||
           'https://via.placeholder.com/400',
+          price: edge.node.priceRange?.minVariantPrice?.amount
+  ? new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: edge.node.priceRange.minVariantPrice.currencyCode,
+    }).format(parseFloat(edge.node.priceRange.minVariantPrice.amount))
+  : '',
       }))
     );
     hasNextPage = result.pageInfo.hasNextPage;

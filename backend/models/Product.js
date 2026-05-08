@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema(
     handle: { type: String },
     link: { type: String, required: true },
     imageUrl: { type: String, required: true },
+     price: { type: String, default: '' },
     embedding: { type: [Number], required: true },
   },
   { timestamps: true }
