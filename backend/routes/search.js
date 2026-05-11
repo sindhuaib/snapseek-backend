@@ -16,8 +16,8 @@ const upload = multer({
 });
 
 const TOP_N = Number(process.env.TOP_N || 5);
-const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.4);
-const MIN_TOP_SCORE = Number(process.env.MIN_TOP_SCORE || 0.45);
+const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.2);
+const MIN_TOP_SCORE = Number(process.env.MIN_TOP_SCORE || 0.25);
 
 router.post('/', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });

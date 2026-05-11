@@ -49,6 +49,7 @@ async function describeImage(buffer) {
     image: bytes,
     prompt: DESCRIBE_PROMPT,
     max_tokens: 256,
+    temperature: 0,
   });
   const description = (result.description || result.response || '').trim();
   if (!description) {
