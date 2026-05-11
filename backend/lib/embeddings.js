@@ -5,7 +5,7 @@ const VISION_MODEL = process.env.CF_VISION_MODEL || '@cf/llava-hf/llava-1.5-7b-h
 const TEXT_EMBED_MODEL = process.env.CF_EMBED_MODEL || '@cf/baai/bge-base-en-v1.5';
 
 const DESCRIBE_PROMPT =
-  'Describe this image in 2-3 sentences. Focus on: what type of object/item it is, what category it belongs to (clothing, electronics, accessory, food, etc.), key materials, dominant colors, patterns, and any notable visual features. Use simple descriptive words.';
+  'Describe ONLY the visual appearance of the main product in this image. List in this order: (1) exact colors visible (e.g. neon pink, pastel yellow, charcoal black, sky blue), (2) patterns or graphics (e.g. geometric, isometric, floral, abstract, gradient, striped, polka dot, camo, plain solid), (3) artistic style (e.g. photo-realistic, cartoon, minimalist, retro, futuristic), (4) shape and surface finish (e.g. matte, glossy, rounded, angular). Do NOT mention what type of object it is. Do NOT mention the background, lighting, or setting. Do NOT use generic words like "stylish", "modern", or "design". Use 4-6 short comma-separated phrases.';
 
 function ensureConfigured() {
   if (!CF_TOKEN || !CF_ACCOUNT_ID) {
