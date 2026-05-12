@@ -12,9 +12,11 @@ let loadingPromise;
 async function loadModel() {
   if (!loadingPromise) {
     loadingPromise = (async () => {
-      console.log(`Loading CLIP model: ${MODEL_NAME}...`);
+      console.log(`Loading CLIP model (quantized): ${MODEL_NAME}...`);
       processor = await AutoProcessor.from_pretrained(MODEL_NAME);
-      visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_NAME);
+      visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_NAME, {
+        quantized: true,
+      });
       console.log('CLIP model loaded.');
     })();
   }

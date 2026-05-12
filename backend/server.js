@@ -4,6 +4,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { connectDB } from './db.js';
+import { warmup as warmupEmbeddings } from './lib/embeddings.js';
 import searchRouter from './routes/search.js';
 import productsRouter from './routes/products.js';
 import adminRouter from './routes/admin.js';
@@ -73,8 +74,10 @@ async function start() {
     console.error('Mongo connection failed:', err);
   }
 
-  if (!process.env.HUGGINGFACE_API_TOKEN) {
-    console.warn('HUGGINGFACE_API_TOKEN not set — /api/search will fail');
+  try {
+    await warmupEmbeddings();
+  } catch (err) {
+    console.error('CLIP warmup failed:', err);
   }
 }
 
