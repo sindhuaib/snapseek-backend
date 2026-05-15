@@ -9,10 +9,28 @@ export default function App({ apiBase }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api
-      .fetchProducts()
-      .then(setProducts)
-      .catch((e) => setError(e.message));
+    let cancelled = false;
+    (async () => {
+      api.warmup?.();
+      try {
+        let products;
+        try {
+          products = await api.fetchProducts();
+        } catch (firstErr) {
+          if (cancelled) return;
+          setError('Waking up server…');
+          await new Promise((r) => setTimeout(r, 3000));
+          products = await api.fetchProducts();
+          if (!cancelled) setError(null);
+        }
+        if (!cancelled) setProducts(products);
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [api]);
 
 return (

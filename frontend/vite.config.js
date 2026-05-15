@@ -30,7 +30,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'https://snapseek-backend.onrender.com',
+        target: process.env.VITE_API_TARGET || 'https://snapseek-backend.onrender.com',
         changeOrigin: true,
         secure: true,
         headers: {

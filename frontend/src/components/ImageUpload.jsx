@@ -19,7 +19,15 @@ export default function ImageUpload({ api, presetImages = [] }) {
     setResults(null);
     setSearching(true);
     try {
-      const found = await api.searchByImage(file);
+      let found;
+      try {
+        found = await api.searchByImage(file);
+      } catch (firstErr) {
+        setError('Waking up server, retrying…');
+        await new Promise((r) => setTimeout(r, 3000));
+        found = await api.searchByImage(file);
+        setError(null);
+      }
       console.log("test", found);
       setResults(found);
     } catch (e) {
@@ -70,6 +78,10 @@ export default function ImageUpload({ api, presetImages = [] }) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) api.warmup?.();
+  }, [isOpen, api]);
 
   useEffect(() => { if (!isOpen) reset(); }, [isOpen]);
   useEffect(() => { return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }; }, [previewUrl]);
