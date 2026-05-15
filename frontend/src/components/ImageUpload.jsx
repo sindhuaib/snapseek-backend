@@ -8,6 +8,11 @@ export default function ImageUpload({ api, presetImages = [] }) {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [loadStatus, setLoadStatus] = useState(null);
+
+  useEffect(() => {
+    api.onStatus?.((msg) => setLoadStatus(msg));
+  }, [api]);
 
   async function runSearch(file) {
     if (!file) return;
@@ -377,7 +382,7 @@ export default function ImageUpload({ api, presetImages = [] }) {
                   {searching && (
                     <div className="isw-status">
                       <div className="isw-spinner"></div>
-                      Finding matching products...
+                      {loadStatus || 'Finding matching products...'}
                     </div>
                   )}
 

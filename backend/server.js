@@ -4,7 +4,6 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { connectDB } from './db.js';
-import { warmup as warmupEmbeddings } from './lib/embeddings.js';
 
 import searchRouter from './routes/search.js';
 import productsRouter from './routes/products.js';
@@ -75,11 +74,6 @@ async function start() {
     console.error('Mongo connection failed:', err);
   }
 
-  try {
-    await warmupEmbeddings();
-  } catch (err) {
-    console.error('Embeddings warmup failed:', err);
-  }
 }
 
 start();

@@ -1,3 +1,5 @@
+import { embedImage, preloadModel, onStatus } from './lib/embed-client.js';
+
 export function createApi(apiBase) {
   const base = apiBase || '/api';
 
@@ -13,9 +15,12 @@ export function createApi(apiBase) {
   }
 
   async function searchByImage(file) {
-    const form = new FormData();
-    form.append('image', file);
-    const res = await fetch(`${base}/search`, { method: 'POST', body: form });
+    const embedding = await embedImage(file);
+    const res = await fetch(`${base}/search/by-vector`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embedding }),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = err.detail ? `${err.error || 'Search failed'}: ${err.detail}` : (err.error || `Search failed (HTTP ${res.status})`);
@@ -26,11 +31,12 @@ export function createApi(apiBase) {
   }
 
   async function warmup() {
+    preloadModel();
     try {
       await fetch(`${base}/health`, { method: 'GET' });
     } catch {
     }
   }
 
-  return { fetchProducts, searchByImage, warmup };
+  return { fetchProducts, searchByImage, warmup, onStatus };
 }
