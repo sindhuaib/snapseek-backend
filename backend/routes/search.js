@@ -16,8 +16,8 @@ const upload = multer({
 });
 
 const TOP_N = Number(process.env.TOP_N || 5);
-const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.2);
-const MIN_TOP_SCORE = Number(process.env.MIN_TOP_SCORE || 0.25);
+const THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD || 0.15);
+const MIN_TOP_SCORE = Number(process.env.MIN_TOP_SCORE || 0.20);
 
 async function searchWithEmbedding(queryEmbedding) {
   const products = await Product.find({}, 'title link imageUrl embedding price').lean();
