@@ -25,6 +25,24 @@ router.get('/status', async (_req, res) => {
   }
 });
 
+router.put('/embeddings/:id', async (req, res) => {
+  const { embedding } = req.body || {};
+  if (!Array.isArray(embedding) || embedding.length === 0 || typeof embedding[0] !== 'number') {
+    return res.status(400).json({ error: 'embedding must be a non-empty array of numbers' });
+  }
+  try {
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id,
+      { embedding },
+      { new: true, projection: '_id title' }
+    );
+    if (!updated) return res.status(404).json({ error: 'Product not found' });
+    res.json({ ok: true, id: updated._id, title: updated.title });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/sync', async (_req, res) => {
   if (syncState.running) {
     return res.status(409).json({ error: 'Sync already in progress' });

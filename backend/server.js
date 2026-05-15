@@ -58,6 +58,10 @@ app.get('/admin', (_req, res) => {
   res.sendFile(join(__dirname, 'views/admin.html'));
 });
 
+app.get('/admin/reembed', (_req, res) => {
+  res.sendFile(join(__dirname, 'views/reembed.html'));
+});
+
 app.use(express.static(distPath));
 
 app.get('/', (_req, res) =>

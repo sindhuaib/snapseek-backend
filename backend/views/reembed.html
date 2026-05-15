@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Re-embed Catalog</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #202223; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p { color: #6d7175; line-height: 1.5; font-size: 14px; }
+    button { background: #008060; color: #fff; border: none; padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; }
+    button:disabled { background: #b5d5c8; cursor: not-allowed; }
+    .progress { margin-top: 20px; }
+    .progress-bar { height: 8px; background: #e1e3e5; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .progress-fill { height: 100%; background: #008060; transition: width 0.2s; }
+    .log { margin-top: 20px; background: #f6f6f7; border-radius: 6px; padding: 12px; max-height: 360px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #6d7175; }
+    .log .ok { color: #006e52; }
+    .log .err { color: #b3261e; }
+    .status { font-size: 13px; margin-top: 8px; color: #008060; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <h1>Re-embed Catalog (browser-side)</h1>
+  <p>This refreshes product embeddings using the same CLIP pipeline that runs in the customer's browser at search time, so DB vectors and query vectors live in matching space. Run this once after switching to client-side embeddings.</p>
+
+  <button id="go">Start re-embed</button>
+  <div class="status" id="status"></div>
+
+  <div class="progress" id="progress" style="display:none;">
+    <div class="progress-bar"><div class="progress-fill" id="bar" style="width:0%"></div></div>
+    <div id="pct">0%</div>
+  </div>
+
+  <div class="log" id="log" style="display:none;"></div>
+
+  <script type="module">
+    const CDN = 'https://esm.sh/@xenova/transformers@2.17.2';
+    const MODEL = 'Xenova/clip-vit-base-patch32';
+
+    const btn = document.getElementById('go');
+    const status = document.getElementById('status');
+    const bar = document.getElementById('bar');
+    const pct = document.getElementById('pct');
+    const progress = document.getElementById('progress');
+    const log = document.getElementById('log');
+
+    function append(msg, cls) {
+      const div = document.createElement('div');
+      if (cls) div.className = cls;
+      div.textContent = msg;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function l2(v) {
+      let s = 0; for (const x of v) s += x * x;
+      const n = Math.sqrt(s) || 1;
+      return Array.from(v).map(x => x / n);
+    }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      log.style.display = 'block';
+      progress.style.display = 'block';
+
+      try {
+        status.textContent = 'Loading CLIP model (one-time)…';
+        const t = await import(CDN);
+        t.env.allowLocalModels = false;
+        t.env.useBrowserCache = true;
+        const processor = await t.AutoProcessor.from_pretrained(MODEL);
+        const model = await t.CLIPVisionModelWithProjection.from_pretrained(MODEL, {
+          quantized: true,
+          progress_callback: (p) => {
+            if (p?.status === 'progress' && p.progress != null) {
+              status.textContent = `Loading CLIP model… ${Math.round(p.progress)}%`;
+            }
+          },
+        });
+        status.textContent = 'Model loaded. Fetching products…';
+
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('Failed to fetch products');
+        const { products } = await res.json();
+        append(`Found ${products.length} products`, 'ok');
+
+        let done = 0, failed = 0;
+        for (const p of products) {
+          try {
+            const imgRes = await fetch(p.imageUrl);
+            if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status} fetching image`);
+            const blob = await imgRes.blob();
+            const image = await t.RawImage.fromBlob(blob);
+            const inputs = await processor(image);
+            const { image_embeds } = await model(inputs);
+            const vec = l2(image_embeds.data);
+
+            const put = await fetch(`/api/admin/embeddings/${p._id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ embedding: vec }),
+            });
+            if (!put.ok) {
+              const e = await put.json().catch(() => ({}));
+              throw new Error(e.error || `PUT ${put.status}`);
+            }
+            append(`✓ ${p.title}`, 'ok');
+          } catch (err) {
+            failed++;
+            append(`✗ ${p.title}: ${err.message}`, 'err');
+          }
+          done++;
+          const percent = Math.round((done / products.length) * 100);
+          bar.style.width = `${percent}%`;
+          pct.textContent = `${done}/${products.length} (${percent}%)`;
+        }
+
+        status.textContent = `Done. ${done - failed}/${products.length} succeeded.`;
+        append(`\nFinished: ${done - failed} succeeded, ${failed} failed`, failed ? 'err' : 'ok');
+      } catch (err) {
+        status.textContent = 'Error';
+        append(`Fatal: ${err.message}`, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
