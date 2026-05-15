@@ -1,52 +1,89 @@
-import { AutoProcessor, CLIPVisionModelWithProjection, RawImage, env } from '@xenova/transformers';
+const HF_API_URL =
+  process.env.HF_API_URL ||
+  'https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32';
 
-env.cacheDir = process.env.TRANSFORMERS_CACHE || './.transformers-cache';
-env.allowLocalModels = false;
-
-const MODEL_NAME = process.env.CLIP_MODEL || 'Xenova/clip-vit-base-patch32';
-
-let processor;
-let visionModel;
-let loadingPromise;
-
-async function loadModel() {
-  if (!loadingPromise) {
-    loadingPromise = (async () => {
-      console.log(`Loading CLIP model (quantized): ${MODEL_NAME}...`);
-      processor = await AutoProcessor.from_pretrained(MODEL_NAME);
-      visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_NAME, {
-        quantized: true,
-      });
-      console.log('CLIP model loaded.');
-    })();
-  }
-  await loadingPromise;
-}
+const MAX_ATTEMPTS = 4;
 
 function l2Normalize(vec) {
   let sum = 0;
   for (const v of vec) sum += v * v;
   const norm = Math.sqrt(sum) || 1;
-  return Array.from(vec).map((v) => v / norm);
+  return vec.map((v) => v / norm);
+}
+
+function parseEmbedding(data) {
+  if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
+    return data;
+  }
+  if (Array.isArray(data) && Array.isArray(data[0]) && typeof data[0][0] === 'number') {
+    return data[0];
+  }
+  if (Array.isArray(data) && data[0] && typeof data[0].label === 'string') {
+    throw new Error(
+      'HF API returned zero-shot classifications instead of embeddings. The default pipeline for this model does not expose raw image embeddings — switch to an HF Space (Option D) or a model with image-feature-extraction pipeline.'
+    );
+  }
+  throw new Error(`Unexpected HF embedding response shape: ${JSON.stringify(data).slice(0, 200)}`);
+}
+
+async function callHF(buffer) {
+  const token = process.env.HUGGINGFACE_API_TOKEN;
+  if (!token) throw new Error('HUGGINGFACE_API_TOKEN env var is not set');
+
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const res = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/octet-stream',
+        'x-wait-for-model': 'true',
+      },
+      body: buffer,
+    });
+
+    if (res.status === 503) {
+      let waitMs = 10000;
+      try {
+        const body = await res.json();
+        if (body?.estimated_time) waitMs = Math.min(60000, body.estimated_time * 1000);
+      } catch {}
+      console.log(`HF model loading (attempt ${attempt}/${MAX_ATTEMPTS}), waiting ${waitMs}ms`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      lastErr = new Error(`HF API ${res.status}: ${text.slice(0, 300)}`);
+      if (res.status >= 500) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      throw lastErr;
+    }
+
+    const data = await res.json();
+    return parseEmbedding(data);
+  }
+
+  throw lastErr || new Error('HF API did not return a valid response after retries');
 }
 
 export async function warmup() {
-  await loadModel();
+  if (!process.env.HUGGINGFACE_API_TOKEN) {
+    console.warn('HUGGINGFACE_API_TOKEN not set — search will fail until configured.');
+  }
 }
 
 export async function embedImageFromBuffer(buffer) {
-  await loadModel();
-  const blob = new Blob([buffer]);
-  const image = await RawImage.fromBlob(blob);
-  const imageInputs = await processor(image);
-  const { image_embeds } = await visionModel(imageInputs);
-  return l2Normalize(image_embeds.data);
+  const raw = await callHF(buffer);
+  return l2Normalize(raw);
 }
 
 export async function embedImageFromUrl(url) {
-  await loadModel();
-  const image = await RawImage.fromURL(url);
-  const imageInputs = await processor(image);
-  const { image_embeds } = await visionModel(imageInputs);
-  return l2Normalize(image_embeds.data);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image: HTTP ${res.status}`);
+  const arrayBuf = await res.arrayBuffer();
+  return embedImageFromBuffer(Buffer.from(arrayBuf));
 }
