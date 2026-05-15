@@ -1,6 +1,6 @@
 const HF_API_URL =
   process.env.HF_API_URL ||
-  'https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32';
+  'https://router.huggingface.co/hf-inference/models/openai/clip-vit-base-patch32/pipeline/image-feature-extraction';
 
 const MAX_ATTEMPTS = 4;
 
